@@ -43,3 +43,8 @@ A test runner is not installed (right now). But TypeScript, linter and prettier 
 ## Licensing
 
 MIT
+
+```shell
+npm run install cookie-parser 
+npm run install --save-dev @types/cookie-parser
+´´´
