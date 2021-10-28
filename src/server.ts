@@ -1,13 +1,13 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import express from 'express';
+import cookieParser from 'cookie-parser';
+import { connectDatabase, getUsersCollection } from './utils/database';
+
 if (!process.env.MONGODB_URI) {
   throw new Error('No MONGODB_URI provided');
 }
-
-import express from 'express';
-import cookieParser from 'cookie-parser';
-import { connectDatabase } from './utils/database';
 
 const app = express();
 const port = 3000;
@@ -44,32 +44,28 @@ const users = [
     password: '12347',
   },
 ];
-app.get('/api/me', (request, response) => {
-  const username = request.cookies.username;
-  const foundUser = users.find((user) => user.username === username);
-  if (foundUser) {
-    response.send(foundUser);
-  } else {
-    response.status(404).send('User not found');
-  }
+// users push in database
+app.post('/api/pushUsers', async (_request, response) => {
+  await getUsersCollection().insertMany(users);
+  response.send('upload successful');
 });
 
-app.post('/api/login', (request, response) => {
+app.post('/api/login', async (request, response) => {
   const findUser = request.body;
-  const existingUser = users.find(
-    (user) =>
-      user.username === findUser.username && user.password === findUser.password
-  );
+  const existingUser = await getUsersCollection().findOne({
+    username: findUser.username,
+    password: findUser.password,
+  });
 
   if (existingUser) {
     response.setHeader('Set-Cookie', `username=${existingUser.username}`);
-    response.send('Logged in');
+    response.send(`welcome,${existingUser.username}`);
   } else {
     response.status(401).send('Password or username incorrect. Try again!');
   }
 });
 
-app.post('/api/users/', (request, response) => {
+app.post('/api/users/', async (request, response) => {
   const newUser = request.body;
   if (
     typeof newUser.name !== 'string' ||
@@ -79,23 +75,44 @@ app.post('/api/users/', (request, response) => {
     response.status(400).send('Missing properties');
     return;
   }
-  if (users.some((user) => user.username === newUser.username)) {
-    response.status(409).send('User already exists.');
+  const userCollection = getUsersCollection();
+  const existingUser = await userCollection.findOne({
+    username: newUser.username,
+  });
+
+  if (!existingUser) {
+    const userDocument = await userCollection.insertOne(newUser);
+    response.send(`${newUser.name} added, with Id: ${userDocument.insertedId}`);
   } else {
-    users.push(newUser);
-    response.send(`${newUser.name} added.`);
+    response.status(409).send('Username is already taken');
   }
 });
 
-app.delete('/api/users/:username', (request, response) => {
-  const deleteUser = users.findIndex(
-    (user) => user.username === request.params.username
-  );
-  if (deleteUser !== -1) {
-    users.splice(deleteUser, 1);
-    response.send('Deleted');
+app.get('/api/me', async (request, response) => {
+  //const cookie = request.headers.cookie;
+  const cookieName = request.cookies.username;
+  const userNamefromDB = await getUsersCollection().findOne({
+    username: cookieName,
+  });
+
+  if (userNamefromDB) {
+    response.send(userNamefromDB);
   } else {
-    response.status(404).send('not found');
+    response.status(404).send('User not found');
+  }
+});
+
+app.delete('/api/users/:username', async (request, response) => {
+  const urlName = request.params.username;
+  const existingUser = await getUsersCollection().findOne({
+    username: urlName,
+  });
+
+  if (existingUser) {
+    getUsersCollection().deleteOne({ username: urlName });
+    response.send(`${urlName} deleted`);
+  } else {
+    response.status(404).send('User not found');
   }
 });
 
@@ -107,8 +124,9 @@ app.get('/api/users/:username', (request, response) => {
     response.status(404).send('This page is not here.');
   }
 });
-app.get('/api/users', (_request, response) => {
-  response.send(users);
+app.get('/api/users', async (_request, response) => {
+  const userDoc = await getUsersCollection().find().toArray();
+  response.send(userDoc);
 });
 
 app.get('/', (_req, res) => {

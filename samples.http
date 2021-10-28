@@ -9,15 +9,20 @@ GET http://localhost:3000/api/users/iva94 HTTP/1.1
 GET http://localhost:3000/api/users/Noel HTTP/1.1
 
 ### delete a user 
-DELETE http://localhost:3000/api/users/iva94 HTTP/1.1
+DELETE http://localhost:3000/api/users/badaba39 HTTP/1.1
+
+### Push all users
+POST http://localhost:3000/api/pushUsers HTTP/1.1
+Content-Type: application/json
+
 
 ### POST a User
 POST http://localhost:3000/api/users/ HTTP/1.1
 Content-Type: application/json
 
 {
-    "name": "Jerry",
-    "username": "badabam",
+    "name": "Iva",
+    "username": "iva94",
     "password": "123"
 }
 
@@ -35,8 +40,8 @@ POST http://localhost:3000/api/login HTTP/1.1
 Content-Type: application/json
 
 {
-    "username": "walied91",
-    "password": "12345"
+    "username": "iva94",
+    "password": "123"
 }
 
 ### Get logged in user
